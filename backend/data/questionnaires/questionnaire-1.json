@@ -1,0 +1,66 @@
+{
+  "name": "Exam — Fluid Mechanics",
+  "description": "Ten-question exam covering fluid statics, pressure, buoyancy, flow, and Bernoulli's principle.",
+  "questions": [
+    {
+      "index": 0,
+      "text": "Define pressure and state its SI unit. A container of fluid is placed in a zero-gravity environment. Describe the relationship between the pressure on opposing walls of the container and explain why no tangential force exists between the fluid and the confining surface in static equilibrium.",
+      "topic_hint": "Pressure definition and static fluid properties",
+      "expected_concepts": ["pressure definition", "Pascal (unit)", "normal force", "isotropic pressure", "no shear stress in static fluids", "static equilibrium"]
+    },
+    {
+      "index": 1,
+      "text": "Derive the expression for how pressure varies with depth in an incompressible fluid. Clearly state any assumptions made during your derivation.",
+      "topic_hint": "Hydrostatic pressure variation with depth",
+      "expected_concepts": ["hydrostatic pressure", "incompressible fluid", "pressure gradient", "gravitational force balance", "P = P0 + ρgh", "fluid element equilibrium"]
+    },
+    {
+      "index": 2,
+      "text": "A diver descends into the ocean. Estimate the total pressure experienced at a depth of 35 meters. State the rule of thumb that makes this calculation straightforward and explain why it applies to water but not to air.",
+      "topic_hint": "Absolute pressure at depth using the 10 m rule of thumb",
+      "expected_concepts": ["absolute pressure", "gauge pressure", "atmospheric pressure", "1 atm per 10 m of water", "constant density assumption", "compressibility of air vs water"]
+    },
+    {
+      "index": 3,
+      "text": "State Pascal's Principle in your own words. A hydraulic system has a small piston of area 0.02 m² and a large piston of area 0.20 m². A force of 50 N is applied to the small piston. What is the force exerted by the large piston? If the small piston moves down 10 cm, how far does the large piston move? Show that energy is conserved in this process.",
+      "topic_hint": "Pascal's Principle and hydraulic force multiplication",
+      "expected_concepts": ["Pascal's Principle", "pressure transmission", "force multiplication", "area ratio", "volume conservation", "conservation of energy in hydraulics"]
+    },
+    {
+      "index": 4,
+      "text": "Explain the physical origin of buoyancy from first principles using pressure arguments. Derive an expression for the buoyant force on a fully submerged object of arbitrary shape and show that it equals the weight of fluid displaced.",
+      "topic_hint": "Archimedes' Principle derived from pressure differentials",
+      "expected_concepts": ["buoyancy", "pressure differential", "net upward force", "Archimedes' Principle", "weight of displaced fluid", "arbitrary submerged shape"]
+    },
+    {
+      "index": 5,
+      "text": "An object weighs 15.0 N in air and 12.4 N when fully submerged in water (density 1000 kg/m³). Calculate the density of the object. Would this object float or sink if placed freely in water? Justify your answer.",
+      "topic_hint": "Apparent weight, buoyant force, and density calculation",
+      "expected_concepts": ["apparent weight", "buoyant force", "Archimedes' Principle", "density calculation", "float vs sink criterion", "specific gravity"]
+    },
+    {
+      "index": 6,
+      "text": "Distinguish between laminar and turbulent flow. State the conservation of flow equation for an incompressible fluid and use it to explain what happens to the speed of water as it moves from a wide pipe into a narrow pipe.",
+      "topic_hint": "Flow regimes and the continuity equation",
+      "expected_concepts": ["laminar flow", "turbulent flow", "Reynolds number", "continuity equation", "conservation of mass", "A1v1 = A2v2", "flow speed and cross-sectional area"]
+    },
+    {
+      "index": 7,
+      "text": "State Bernoulli's equation and identify what each term represents physically. Using Bernoulli's equation, derive Torricelli's Rule for the exit speed of fluid through a small hole at the base of a large open tank of height H.",
+      "topic_hint": "Bernoulli's equation and Torricelli's theorem",
+      "expected_concepts": ["Bernoulli's equation", "kinetic energy density", "potential energy density", "static pressure", "Torricelli's Rule", "v = sqrt(2gH)", "conservation of energy in fluids"]
+    },
+    {
+      "index": 8,
+      "text": "For a compressible ideal gas, show that pressure varies exponentially with height rather than linearly. Clearly identify where the derivation diverges from the incompressible case and why. What physical property of gases causes this difference?",
+      "topic_hint": "Barometric formula and pressure variation in compressible fluids",
+      "expected_concepts": ["ideal gas law", "barometric formula", "exponential pressure decay", "variable density", "incompressible vs compressible", "scale height", "P = P0 * exp(-ρgh/P0)"]
+    },
+    {
+      "index": 9,
+      "text": "A sealed cylindrical pipe of length 0.5 m and radius 0.002 m carries a fluid with dynamic viscosity 0.001 Pa·s in laminar flow. The pressure difference across the pipe is 200 Pa. Calculate the flow rate using Poiseuille's Law. If the radius were halved, by what factor would the flow rate change? Explain why this result is physiologically significant.",
+      "topic_hint": "Poiseuille's Law and viscous laminar flow",
+      "expected_concepts": ["Poiseuille's Law", "dynamic viscosity", "flow rate calculation", "r^4 radius dependence", "pressure gradient", "laminar flow condition", "physiological significance in blood vessels"]
+    }
+  ]
+}

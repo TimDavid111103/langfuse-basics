@@ -1,0 +1,36 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: pensive
+      POSTGRES_PASSWORD: pensive
+      POSTGRES_DB: pensive
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/init-langfuse-db.sql:/docker-entrypoint-initdb.d/01-init-langfuse-db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pensive -d pensive"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  langfuse:
+    image: langfuse/langfuse:2
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://pensive:pensive@postgres:5432/langfuse
+      NEXTAUTH_SECRET: changeme-dev-only
+      SALT: changeme-dev-only
+      NEXTAUTH_URL: http://localhost:3000
+      TELEMETRY_ENABLED: "false"
+
+volumes:
+  postgres_data:

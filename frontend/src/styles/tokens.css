@@ -1,0 +1,22 @@
+/* Design tokens — derived from design reference (frontend/src/assets/design-reference.png) */
+:root {
+  --color-primary: #c9572a;
+  --color-primary-light: #fdf0eb;
+  --color-primary-dark: #a8451f;
+  --color-bg: #f2f0eb;
+  --color-surface: #ffffff;
+  --color-text-primary: #1c1917;
+  --color-text-secondary: #78716c;
+  --color-border: #e5e0da;
+
+  --radius-card: 12px;
+  --radius-pill: 9999px;
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-nav: 0 1px 0 #e5e0da;
+  --padding-card: 20px 24px;
+
+  --font-body: 14px;
+  --font-header: 16px;
+  --font-label: 11px;
+  --lh-body: 1.5;
+}

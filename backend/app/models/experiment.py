@@ -14,11 +14,15 @@ class ExperimentStatus(StrEnum):
 
 
 class Experiment(SQLModel, table=True):
+    """A single RAG-vs-no-RAG evaluation run configuration."""
+
     __tablename__ = "experiment"
 
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
     questionnaire_id: int = Field(foreign_key="questionnaire.id", index=True)
+    # Pinned version so re-runs use the same question set even if the
+    # questionnaire is later updated.
     questionnaire_version: int
     source_material_id: int = Field(foreign_key="source_material.id", index=True)
     status: ExperimentStatus = Field(default=ExperimentStatus.CREATED)
@@ -29,6 +33,8 @@ class Experiment(SQLModel, table=True):
 
 
 class ExperimentResult(SQLModel, table=True):
+    """Per-question, per-run output: both rubrics, the retrieved chunks, and judge scores."""
+
     __tablename__ = "experiment_result"
 
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -36,9 +42,12 @@ class ExperimentResult(SQLModel, table=True):
     run_index: int = Field(default=0)
     question_index: int
     question_text: str = Field(sa_column=Column(Text, nullable=False))
+    # JSON-serialised list of RubricCriterion dicts.
     rubric_no_rag: str = Field(sa_column=Column(Text, nullable=False))
     rubric_rag: str = Field(sa_column=Column(Text, nullable=False))
+    # JSON-serialised list of RetrievedChunk dicts used by the RAG condition.
     retrieved_chunks_json: str = Field(sa_column=Column(Text, nullable=False))
+    # JSON-serialised QuestionEvaluationResult; null until the judge completes.
     evaluation_json: Optional[str] = Field(default=None, sa_column=Column(Text))
     winner: Optional[str] = Field(default=None)
     created_at: datetime = Field(default_factory=datetime.utcnow)

@@ -6,19 +6,20 @@ from openai import OpenAI
 from app.schemas.rubric import GeneratedRubric, QuestionItem, RubricCriterion
 from app.services.rubric_generation.prompts import NO_RAG_USER_TEMPLATE, RUBRIC_SYSTEM_PROMPT
 
-MODEL = "gpt-4o"
+MODEL = "gpt-4o-mini"
 
 
-@observe(name="rubric_no_rag_generation")
+@observe(name="rubric_no_rag", as_type="generation", capture_input=False, capture_output=False)
 def generate_rubric_no_rag(
     question: QuestionItem,
     client: OpenAI,
 ) -> GeneratedRubric:
-    """Generate a rubric for a question using only the model's internal knowledge."""
-    user_content = NO_RAG_USER_TEMPLATE.format(
-        question_text=question.text,
-        expected_concepts=", ".join(question.expected_concepts),
-    )
+    """Generate a grading rubric using only the model's internal knowledge (no retrieved context).
+
+    This is the baseline condition. The rubric reflects whatever the model
+    knows about the topic without any grounding in the specific source material.
+    """
+    user_content = NO_RAG_USER_TEMPLATE.format(question_text=question.text)
 
     response = client.chat.completions.create(
         model=MODEL,
@@ -32,17 +33,16 @@ def generate_rubric_no_rag(
 
     raw = json.loads(response.choices[0].message.content or "{}")
     criteria = [RubricCriterion(**c) for c in raw["criteria"]]
-    lf = get_client()
-    span_id = lf.get_current_observation_id() or ""
-
     usage = response.usage
-    prompt_tokens = usage.prompt_tokens if usage else 0
-    completion_tokens = usage.completion_tokens if usage else 0
 
-    lf.update_current_generation(
-        input={"question": question.text, "condition": "no_rag"},
+    get_client().update_current_generation(
+        model=MODEL,
+        input={"question_text": question.text, "question_index": question.index, "condition": "no_rag"},
         output={"criteria_count": len(criteria), "total_points": raw["total_points"]},
-        metadata={"model": MODEL, "question_index": question.index},
+        usage_details={
+            "input_tokens": usage.prompt_tokens if usage else 0,
+            "output_tokens": usage.completion_tokens if usage else 0,
+        },
     )
 
     return GeneratedRubric(
@@ -52,8 +52,6 @@ def generate_rubric_no_rag(
         total_points=raw["total_points"],
         condition="no_rag",
         model_id=MODEL,
-        prompt_tokens=prompt_tokens,
-        completion_tokens=completion_tokens,
-        cache_read_tokens=0,
-        langfuse_span_id=span_id,
+        prompt_tokens=usage.prompt_tokens if usage else 0,
+        completion_tokens=usage.completion_tokens if usage else 0,
     )

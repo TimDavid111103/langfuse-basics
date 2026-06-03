@@ -7,11 +7,16 @@ from app.schemas.retrieval import RetrievedChunk
 from app.schemas.rubric import GeneratedRubric, QuestionItem, RubricCriterion
 from app.services.rubric_generation.prompts import RAG_USER_TEMPLATE, RUBRIC_SYSTEM_PROMPT
 
-MODEL = "gpt-4o"
+MODEL = "gpt-4o-mini"
 
 
 def _format_chunks(chunks: list[RetrievedChunk]) -> str:
-    """Format retrieved chunks into a readable passage block for the prompt."""
+    """Format retrieved chunks into a numbered passage block for the prompt.
+
+    Each passage includes its section header, the one-sentence context (if
+    present), and the raw chunk text so the model has both provenance and
+    meaning signals.
+    """
     parts = []
     for i, chunk in enumerate(chunks, 1):
         header = f"[Passage {i}"
@@ -20,21 +25,29 @@ def _format_chunks(chunks: list[RetrievedChunk]) -> str:
         if chunk.page_number:
             header += f", p.{chunk.page_number}"
         header += "]"
-        parts.append(f"{header}\n{chunk.text}")
+        body = f"{header}\n"
+        if chunk.context:
+            body += f"Context: {chunk.context}\n"
+        body += chunk.text
+        parts.append(body)
     return "\n\n".join(parts)
 
 
-@observe(name="rubric_rag_generation")
+@observe(name="rubric_rag", as_type="generation", capture_input=False, capture_output=False)
 def generate_rubric_rag(
     question: QuestionItem,
     chunks: list[RetrievedChunk],
     client: OpenAI,
 ) -> GeneratedRubric:
-    """Generate a rubric for a question grounded in retrieved source material passages."""
+    """Generate a grading rubric grounded in retrieved passages from the source material.
+
+    This is the RAG condition. The retrieved chunks anchor the rubric to the
+    specific terminology, equations, and derivations used in the lecture notes,
+    rather than relying on the model's prior knowledge.
+    """
     user_content = RAG_USER_TEMPLATE.format(
         question_text=question.text,
         retrieved_chunks=_format_chunks(chunks),
-        expected_concepts=", ".join(question.expected_concepts),
     )
 
     response = client.chat.completions.create(
@@ -49,21 +62,21 @@ def generate_rubric_rag(
 
     raw = json.loads(response.choices[0].message.content or "{}")
     criteria = [RubricCriterion(**c) for c in raw["criteria"]]
-    lf = get_client()
-    span_id = lf.get_current_observation_id() or ""
-
     usage = response.usage
-    prompt_tokens = usage.prompt_tokens if usage else 0
-    completion_tokens = usage.completion_tokens if usage else 0
 
-    lf.update_current_generation(
+    get_client().update_current_generation(
+        model=MODEL,
         input={
-            "question": question.text,
+            "question_text": question.text,
+            "question_index": question.index,
             "condition": "rag",
             "chunks_used": len(chunks),
         },
         output={"criteria_count": len(criteria), "total_points": raw["total_points"]},
-        metadata={"model": MODEL, "question_index": question.index},
+        usage_details={
+            "input_tokens": usage.prompt_tokens if usage else 0,
+            "output_tokens": usage.completion_tokens if usage else 0,
+        },
     )
 
     return GeneratedRubric(
@@ -73,8 +86,6 @@ def generate_rubric_rag(
         total_points=raw["total_points"],
         condition="rag",
         model_id=MODEL,
-        prompt_tokens=prompt_tokens,
-        completion_tokens=completion_tokens,
-        cache_read_tokens=0,
-        langfuse_span_id=span_id,
+        prompt_tokens=usage.prompt_tokens if usage else 0,
+        completion_tokens=usage.completion_tokens if usage else 0,
     )

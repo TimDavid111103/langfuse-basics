@@ -8,12 +8,15 @@ from docling.document_converter import DocumentConverter, PdfFormatOption
 
 @dataclass
 class PageContent:
+    """A single Docling document item (paragraph, list entry, or table) with its provenance."""
+
     page_number: int | None
     section_title: str | None
     text: str
 
 
 def _make_converter() -> DocumentConverter:
+    """Build a Docling DocumentConverter configured for CPU-based PDF processing."""
     pipeline_options = PdfPipelineOptions(
         accelerator_options=AcceleratorOptions(device=AcceleratorDevice.CPU),
     )
@@ -23,6 +26,13 @@ def _make_converter() -> DocumentConverter:
 
 
 def extract_content(file_path: Path) -> list[PageContent]:
+    """Parse a PDF and return one PageContent per document item.
+
+    Docling segments PDFs into typed items (TextItem, TableItem, ListItem,
+    SectionHeaderItem, etc.). Section headers update a running tracker so each
+    subsequent item carries the correct section_title. Tables are exported as
+    Markdown; all other text items use the plain .text attribute.
+    """
     converter = _make_converter()
     result = converter.convert(str(file_path))
     doc = result.document
@@ -38,16 +48,17 @@ def extract_content(file_path: Path) -> list[PageContent]:
             continue
 
         if item_type in ("TextItem", "TableItem", "ListItem"):
-            text = item.export_to_markdown() if hasattr(item, "export_to_markdown") else str(item)
+            if item_type == "TableItem":
+                text = item.export_to_markdown()
+            else:
+                text = item.text
             text = text.strip()
             if not text:
                 continue
 
             page_no: int | None = None
             if hasattr(item, "prov") and item.prov:
-                prov = item.prov[0]
-                if hasattr(prov, "page_no"):
-                    page_no = prov.page_no
+                page_no = item.prov[0].page_no
 
             pages.append(
                 PageContent(
@@ -61,9 +72,8 @@ def extract_content(file_path: Path) -> list[PageContent]:
 
 
 def count_pages(file_path: Path) -> int | None:
+    """Return the total page count of a PDF, or None if Docling cannot determine it."""
     converter = _make_converter()
     result = converter.convert(str(file_path))
     pages = result.document.pages
-    if pages:
-        return len(pages)
-    return None
+    return len(pages) if pages else None

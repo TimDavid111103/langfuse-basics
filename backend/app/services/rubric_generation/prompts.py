@@ -1,3 +1,6 @@
+# System prompt shared by both the no-RAG and RAG rubric generators.
+# It enforces a fixed JSON schema and scoring constraints so results are
+# comparable across conditions.
 RUBRIC_SYSTEM_PROMPT = """\
 You are an expert physics educator and assessment designer.
 Generate a detailed grading rubric for the physics question provided.
@@ -26,12 +29,14 @@ Return ONLY a valid JSON object with this exact schema — no explanation, no ma
 }
 """
 
+# No-RAG condition: the model generates the rubric from its own knowledge only.
 NO_RAG_USER_TEMPLATE = """\
 Question: {question_text}
-
-Expected concepts (use as guidance): {expected_concepts}
 """
 
+# RAG condition: relevant passages from the source material are injected so the
+# model can ground the rubric in the exact terminology and derivations used in
+# the lecture notes.
 RAG_USER_TEMPLATE = """\
 Question: {question_text}
 
@@ -42,5 +47,4 @@ Relevant passages from the source material:
 
 Use the passages above to ensure your rubric reflects the exact terminology, equations, and \
 explanations from the source material.
-Expected concepts (additional guidance): {expected_concepts}
 """

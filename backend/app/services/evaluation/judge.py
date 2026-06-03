@@ -4,7 +4,6 @@ from typing import Literal
 from langfuse import get_client, observe
 from openai import OpenAI
 
-from app.config import settings
 from app.schemas.evaluation import (
     DimensionScore,
     ExperimentEvaluationSummary,
@@ -13,21 +12,12 @@ from app.schemas.evaluation import (
 )
 from app.schemas.retrieval import RetrievedChunk
 from app.schemas.rubric import GeneratedRubric, QuestionItem
-from app.services.evaluation.prompts import JUDGE_SYSTEM_PROMPT, JUDGE_USER_TEMPLATE
 
-JUDGE_MODEL = "gpt-4o"
-
-_client: OpenAI | None = None
-
-
-def _get_client() -> OpenAI:
-    global _client
-    if _client is None:
-        _client = OpenAI(api_key=settings.openai_api_key)
-    return _client
+JUDGE_MODEL = "gpt-4o-mini"
 
 
 def _format_rubric(rubric: GeneratedRubric) -> str:
+    """Render a rubric as a human-readable bullet list for the judge prompt."""
     lines = []
     for c in rubric.criteria:
         lines.append(
@@ -39,17 +29,26 @@ def _format_rubric(rubric: GeneratedRubric) -> str:
 
 
 def _format_passages(chunks: list[RetrievedChunk]) -> str:
+    """Render retrieved chunks as a numbered passage block for the judge prompt.
+
+    Includes the one-sentence context (if present) before each chunk's text so
+    the judge can see both what the chunk says and where it sits in the document.
+    """
     parts = []
     for i, chunk in enumerate(chunks, 1):
         header = f"[{i}"
         if chunk.section_title:
             header += f" — {chunk.section_title}"
         header += "]"
-        parts.append(f"{header}\n{chunk.text}")
+        body = f"{header}\n"
+        if chunk.context:
+            body += f"Context: {chunk.context}\n"
+        body += chunk.text
+        parts.append(body)
     return "\n\n".join(parts)
 
 
-@observe(name="judge_evaluation")
+@observe(name="judge_evaluation", as_type="generation", capture_input=False, capture_output=False)
 def evaluate_rubrics(
     question: QuestionItem,
     rubric_no_rag: GeneratedRubric,
@@ -58,6 +57,14 @@ def evaluate_rubrics(
     client: OpenAI,
     run_index: int,
 ) -> QuestionEvaluationResult:
+    """Ask the judge model to score both rubrics against the reference passages.
+
+    The judge evaluates four dimensions (concept_coverage, factual_accuracy,
+    specificity, subject_matter_depth) on a 0–10 scale each, for a max of 40
+    points per condition. It then declares a winner for the question.
+    """
+    from app.services.evaluation.prompts import JUDGE_SYSTEM_PROMPT, JUDGE_USER_TEMPLATE
+
     user_content = JUDGE_USER_TEMPLATE.format(
         question_text=question.text,
         reference_passages=_format_passages(reference_chunks),
@@ -76,16 +83,27 @@ def evaluate_rubrics(
     )
 
     raw = json.loads(response.choices[0].message.content or "{}")
-    lf = get_client()
-    span_id = lf.get_current_observation_id() or ""
 
     dimension_scores = [DimensionScore(**d) for d in raw["dimension_scores"]]
     winner: Literal["no_rag", "rag", "tie"] = raw["winner"]
+    usage = response.usage
 
-    lf.update_current_generation(
-        input={"question": question.text, "question_index": question.index, "run_index": run_index},
-        output={"winner": winner, "no_rag_total": raw["no_rag_total"], "rag_total": raw["rag_total"]},
-        metadata={"model": JUDGE_MODEL},
+    get_client().update_current_generation(
+        model=JUDGE_MODEL,
+        input={
+            "question_text": question.text,
+            "question_index": question.index,
+            "run_index": run_index,
+        },
+        output={
+            "winner": winner,
+            "no_rag_total": raw["no_rag_total"],
+            "rag_total": raw["rag_total"],
+        },
+        usage_details={
+            "input_tokens": usage.prompt_tokens if usage else 0,
+            "output_tokens": usage.completion_tokens if usage else 0,
+        },
     )
 
     return QuestionEvaluationResult(
@@ -98,11 +116,11 @@ def evaluate_rubrics(
         winner=winner,
         judge_reasoning=raw["judge_reasoning"],
         judge_model=JUDGE_MODEL,
-        langfuse_span_id=span_id,
     )
 
 
 def _run_winner(no_rag: float, rag: float) -> Literal["no_rag", "rag", "tie"]:
+    """Determine the winning condition for a single run or overall."""
     if rag > no_rag:
         return "rag"
     if no_rag > rag:
@@ -114,6 +132,11 @@ def aggregate_results(
     experiment_id: int,
     runs: list[list[QuestionEvaluationResult]],
 ) -> ExperimentEvaluationSummary:
+    """Aggregate per-question judge results across all runs into a summary.
+
+    Computes per-run averages, per-dimension averages broken down by condition,
+    and overall scores (max 40) for both the RAG and no-RAG conditions.
+    """
     num_runs = len(runs)
 
     run_summaries: list[RunSummary] = []

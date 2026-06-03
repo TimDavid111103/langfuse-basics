@@ -13,9 +13,7 @@ Questionnaire JSON format:
   "questions": [
     {
       "index": 0,
-      "text": "...",
-      "topic_hint": "...",
-      "expected_concepts": ["...", "..."]
+      "text": "..."
     }
   ]
 }

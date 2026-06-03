@@ -4,12 +4,10 @@ from app.schemas.base import CamelModel
 
 
 class QuestionItem(CamelModel):
-    """A single question with metadata used for rubric generation."""
+    """A single question used as input for rubric generation."""
 
     index: int
     text: str
-    topic_hint: str
-    expected_concepts: list[str]
 
 
 class RubricCriterion(CamelModel):
@@ -24,7 +22,7 @@ class RubricCriterion(CamelModel):
 
 
 class GeneratedRubric(CamelModel):
-    """A fully generated rubric for one question under one condition."""
+    """A fully generated rubric for one question under one condition (rag or no_rag)."""
 
     question_index: int
     question_text: str
@@ -34,8 +32,6 @@ class GeneratedRubric(CamelModel):
     model_id: str
     prompt_tokens: int
     completion_tokens: int
-    cache_read_tokens: int
-    langfuse_span_id: str
 
 
 class RubricGenerateNoRagRequest(CamelModel):

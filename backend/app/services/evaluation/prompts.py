@@ -1,7 +1,10 @@
 import json
 
-from app.schemas.evaluation import DimensionScore, QuestionEvaluationResult
+from app.schemas.evaluation import DimensionScore, QuestionEvaluationResult  # noqa: F401 — kept for schema reference
 
+# The judge is instructed to follow explicit counting procedures for each
+# dimension so that scores are reproducible and grounded in the reference
+# passages rather than subjective impressions.
 JUDGE_SYSTEM_PROMPT_TEMPLATE = """\
 You are an expert physics educator and assessment specialist with deep knowledge of \
 undergraduate physics curricula.
@@ -38,6 +41,8 @@ Return ONLY a valid JSON object matching this schema — no explanation, no mark
 {schema}
 """
 
+# The schema string is embedded in the system prompt so the judge knows exactly
+# what JSON structure to produce.
 _RESULT_SCHEMA = json.dumps(
     {
         "dimension_scores": [

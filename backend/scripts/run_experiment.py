@@ -18,7 +18,9 @@ Run from the backend/ directory.
 """
 import argparse
 import asyncio
+import json
 import sys
+from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 
@@ -26,11 +28,15 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from sqlmodel import select
 
+from langfuse import get_client
+
 from app.database import AsyncSessionLocal, create_db_and_tables
-from app.models.experiment import Experiment, ExperimentStatus
+from app.models.experiment import Experiment, ExperimentResult, ExperimentStatus
 from app.models.questionnaire import Questionnaire
 from app.models.source_material import IngestionStatus, SourceMaterial
-from app.routers.experiments import _run_experiment_pipeline
+from app.schemas.evaluation import QuestionEvaluationResult
+from app.services.evaluation.judge import aggregate_results
+from app.services.pipeline import run_experiment_pipeline
 
 
 async def main(
@@ -39,6 +45,7 @@ async def main(
     experiment_name: str,
     num_runs: int,
 ) -> None:
+    """Look up the questionnaire and material, create an experiment, run it, and print results."""
     await create_db_and_tables()
 
     async with AsyncSessionLocal() as session:
@@ -72,28 +79,18 @@ async def main(
         await session.commit()
         await session.refresh(experiment)
 
-    print(f"experiment  '{experiment_name}'  id={experiment.id}")
+    print(f"experiment     '{experiment_name}'  id={experiment.id}")
     print(f"questionnaire  '{questionnaire_name}'  v{questionnaire.current_version}  ({questionnaire.id})")
-    print(f"material  '{material_name}'  ({material.chunk_count} chunks)")
-    print(f"runs  {num_runs}")
+    print(f"material       '{material_name}'  ({material.chunk_count} chunks)")
+    print(f"runs           {num_runs}")
     print()
 
     started = datetime.utcnow()
-    await _run_experiment_pipeline(experiment.id, num_runs)
+    await run_experiment_pipeline(experiment.id, num_runs)
     elapsed = (datetime.utcnow() - started).total_seconds()
 
-    # Print summary
+    # Re-open a session to read results; the pipeline closed its own session.
     async with AsyncSessionLocal() as session:
-        from app.routers.evaluation import get_evaluation_summary
-        from app.database import get_session
-
-        # Load summary directly via judge aggregation
-        import json
-        from collections import defaultdict
-        from app.models.experiment import ExperimentResult
-        from app.schemas.evaluation import QuestionEvaluationResult
-        from app.services.evaluation.judge import aggregate_results
-
         rows_result = await session.exec(
             select(ExperimentResult)
             .where(ExperimentResult.experiment_id == experiment.id)
@@ -138,8 +135,9 @@ async def main(
         for q in run.per_question_results:
             print(f"  Q{q.question_index + 1}  winner={q.winner}  no-rag={q.no_rag_total:.1f}  rag={q.rag_total:.1f}")
 
-    print()
-    print(f"view results at http://localhost:5173/experiments/{experiment.id}/results")
+    if experiment.langfuse_trace_id:
+        print(f"langfuse trace  https://cloud.langfuse.com/trace/{experiment.langfuse_trace_id}")
+    get_client().flush()
 
 
 if __name__ == "__main__":

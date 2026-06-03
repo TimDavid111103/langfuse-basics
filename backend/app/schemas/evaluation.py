@@ -6,7 +6,7 @@ from app.schemas.base import CamelModel
 
 
 class DimensionScore(CamelModel):
-    """Score for a single evaluation dimension comparing no-RAG vs RAG rubrics."""
+    """Judge score for a single evaluation dimension, comparing both rubric conditions."""
 
     dimension: Literal[
         "concept_coverage",
@@ -14,28 +14,29 @@ class DimensionScore(CamelModel):
         "specificity",
         "subject_matter_depth",
     ]
+    # Each dimension is scored 0–10 for both conditions independently.
     rubric_no_rag_score: float = Field(ge=0.0, le=10.0)
     rubric_rag_score: float = Field(ge=0.0, le=10.0)
     reasoning: str
 
 
 class QuestionEvaluationResult(CamelModel):
-    """Judge evaluation result for a single question within a run."""
+    """All judge outputs for a single question within a single run."""
 
     run_index: int
     question_index: int
     question_text: str
     dimension_scores: list[DimensionScore]
+    # Sum of the four dimension scores (max 40) for each condition.
     no_rag_total: float
     rag_total: float
     winner: Literal["no_rag", "rag", "tie"]
     judge_reasoning: str
     judge_model: str
-    langfuse_span_id: str
 
 
 class RunSummary(CamelModel):
-    """Aggregate outcome for a single run across all questions."""
+    """Aggregate outcome across all questions for a single run."""
 
     run_index: int
     per_question_results: list[QuestionEvaluationResult]
@@ -45,7 +46,7 @@ class RunSummary(CamelModel):
 
 
 class ExperimentEvaluationSummary(CamelModel):
-    """Aggregated evaluation summary across all runs of an experiment."""
+    """Top-level summary aggregated across all runs of an experiment."""
 
     experiment_id: int
     num_runs: int
@@ -53,5 +54,6 @@ class ExperimentEvaluationSummary(CamelModel):
     overall_no_rag_score: float
     overall_rag_score: float
     overall_winner: Literal["no_rag", "rag", "tie"]
+    # Per-dimension averages keyed by dimension name, then condition.
     dimension_averages: dict[str, dict[Literal["no_rag", "rag"], float]]
     judge_summary: str

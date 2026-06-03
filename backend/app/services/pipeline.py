@@ -7,17 +7,25 @@ from openai import OpenAI
 
 from app.config import settings
 
-# Langfuse reads credentials from os.environ by default, which pydantic-settings
-# does not populate. Initialize the singleton explicitly so @observe and get_client()
-# use the correct keys from our settings.
 Langfuse(
     public_key=settings.langfuse_public_key,
     secret_key=settings.langfuse_secret_key,
     host=settings.langfuse_base_url,
 )
+from app.eval.aggregation import aggregate_results, run_winner
+from app.eval.events import (
+    EventBus,
+    ExperimentCompleted,
+    ExperimentFailed,
+    ExperimentStarted,
+    QuestionEvaluated,
+    RunCompleted,
+    RunStarted,
+    get_event_bus,
+)
+from app.eval.judge import evaluate_rubrics
 from app.models.experiment import Experiment, ExperimentResult, ExperimentStatus
 from app.services.dataset.versioning import get_version_questions
-from app.services.evaluation.judge import aggregate_results, evaluate_rubrics
 from app.services.retrieval.retriever import retrieve_chunks
 from app.services.rubric_generation.no_rag import generate_rubric_no_rag
 from app.services.rubric_generation.rag import generate_rubric_rag
@@ -26,19 +34,17 @@ TOP_K_RETRIEVAL = 5
 
 
 @observe(name="experiment_pipeline")
-async def run_experiment_pipeline(experiment_id: int, num_runs: int) -> None:
-    """Execute the full RAG-vs-no-RAG pipeline for an experiment.
-
-    For each run:
-    1. Retrieve source-material chunks once per question (deterministic).
-    2. Generate a rubric under the no-RAG condition (model knowledge only).
-    3. Generate a rubric under the RAG condition (grounded in retrieved chunks).
-    4. Ask the judge model to score both rubrics against the reference passages.
-    5. Persist per-question results to the database.
-    """
+async def run_experiment_pipeline(
+    experiment_id: int,
+    num_runs: int,
+    *,
+    event_bus: EventBus | None = None,
+) -> None:
+    """Execute the full RAG-vs-no-RAG pipeline for an experiment."""
     from app.database import AsyncSessionLocal
     from sqlmodel import select
 
+    bus = event_bus or get_event_bus()
     client = OpenAI(api_key=settings.openai_api_key)
 
     async with AsyncSessionLocal() as session:
@@ -61,6 +67,16 @@ async def run_experiment_pipeline(experiment_id: int, num_runs: int) -> None:
         session.add(experiment)
         await session.commit()
 
+        bus.emit(
+            ExperimentStarted(
+                experiment_id=experiment_id,
+                experiment_name=experiment.name,
+                questionnaire_id=experiment.questionnaire_id,
+                source_material_id=experiment.source_material_id,
+                num_runs=num_runs,
+            )
+        )
+
         try:
             questions = await get_version_questions(
                 experiment.questionnaire_id,
@@ -68,7 +84,6 @@ async def run_experiment_pipeline(experiment_id: int, num_runs: int) -> None:
                 session,
             )
 
-            # Retrieval is deterministic so we do it once and reuse across runs.
             retrieved_per_question = await asyncio.gather(
                 *[
                     retrieve_chunks(
@@ -83,8 +98,8 @@ async def run_experiment_pipeline(experiment_id: int, num_runs: int) -> None:
 
             all_runs: list[list] = []
             for run_idx in range(num_runs):
-                # Both conditions run concurrently within a run; runs are sequential
-                # so that each run represents an independent stochastic sample.
+                bus.emit(RunStarted(experiment_id=experiment_id, run_index=run_idx))
+
                 rubrics_no_rag = await asyncio.gather(
                     *[asyncio.to_thread(generate_rubric_no_rag, q, client) for q in questions]
                 )
@@ -107,6 +122,16 @@ async def run_experiment_pipeline(experiment_id: int, num_runs: int) -> None:
                 for q, no_rag, rag, chunks, result in zip(
                     questions, rubrics_no_rag, rubrics_rag, retrieved_per_question, run_results, strict=True
                 ):
+                    bus.emit(
+                        QuestionEvaluated(
+                            experiment_id=experiment_id,
+                            run_index=run_idx,
+                            question_index=q.index,
+                            winner=result.winner,
+                            no_rag_total=result.no_rag_total,
+                            rag_total=result.rag_total,
+                        )
+                    )
                     session.add(ExperimentResult(
                         experiment_id=experiment_id,
                         run_index=run_idx,
@@ -119,6 +144,17 @@ async def run_experiment_pipeline(experiment_id: int, num_runs: int) -> None:
                         winner=result.winner,
                     ))
 
+                no_rag_avg = sum(r.no_rag_total for r in run_results) / len(run_results)
+                rag_avg = sum(r.rag_total for r in run_results) / len(run_results)
+                bus.emit(
+                    RunCompleted(
+                        experiment_id=experiment_id,
+                        run_index=run_idx,
+                        winner=run_winner(no_rag_avg, rag_avg),
+                        no_rag_avg=no_rag_avg,
+                        rag_avg=rag_avg,
+                    )
+                )
                 all_runs.append(run_results)
 
             summary = aggregate_results(experiment_id, all_runs)
@@ -130,12 +166,23 @@ async def run_experiment_pipeline(experiment_id: int, num_runs: int) -> None:
                 }
             )
 
+            bus.emit(
+                ExperimentCompleted(
+                    experiment_id=experiment_id,
+                    overall_winner=summary.overall_winner,
+                    overall_no_rag_score=summary.overall_no_rag_score,
+                    overall_rag_score=summary.overall_rag_score,
+                    num_runs=num_runs,
+                )
+            )
+
             experiment.status = ExperimentStatus.COMPLETE
             experiment.completed_at = datetime.utcnow()
             session.add(experiment)
             await session.commit()
 
         except Exception as exc:
+            bus.emit(ExperimentFailed(experiment_id=experiment_id, error=str(exc)))
             await session.rollback()
             async with AsyncSessionLocal() as err_session:
                 err_result = await err_session.exec(

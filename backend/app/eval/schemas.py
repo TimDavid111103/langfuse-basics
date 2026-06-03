@@ -14,7 +14,6 @@ class DimensionScore(CamelModel):
         "specificity",
         "subject_matter_depth",
     ]
-    # Each dimension is scored 0–10 for both conditions independently.
     rubric_no_rag_score: float = Field(ge=0.0, le=10.0)
     rubric_rag_score: float = Field(ge=0.0, le=10.0)
     reasoning: str
@@ -27,7 +26,6 @@ class QuestionEvaluationResult(CamelModel):
     question_index: int
     question_text: str
     dimension_scores: list[DimensionScore]
-    # Sum of the four dimension scores (max 40) for each condition.
     no_rag_total: float
     rag_total: float
     winner: Literal["no_rag", "rag", "tie"]
@@ -54,6 +52,5 @@ class ExperimentEvaluationSummary(CamelModel):
     overall_no_rag_score: float
     overall_rag_score: float
     overall_winner: Literal["no_rag", "rag", "tie"]
-    # Per-dimension averages keyed by dimension name, then condition.
     dimension_averages: dict[str, dict[Literal["no_rag", "rag"], float]]
     judge_summary: str

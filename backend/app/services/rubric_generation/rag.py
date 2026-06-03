@@ -3,34 +3,12 @@ import json
 from langfuse import get_client, observe
 from openai import OpenAI
 
+from app.eval.formatting import format_chunks_for_rubric
 from app.schemas.retrieval import RetrievedChunk
 from app.schemas.rubric import GeneratedRubric, QuestionItem, RubricCriterion
 from app.services.rubric_generation.prompts import RAG_USER_TEMPLATE, RUBRIC_SYSTEM_PROMPT
 
 MODEL = "gpt-4o-mini"
-
-
-def _format_chunks(chunks: list[RetrievedChunk]) -> str:
-    """Format retrieved chunks into a numbered passage block for the prompt.
-
-    Each passage includes its section header, the one-sentence context (if
-    present), and the raw chunk text so the model has both provenance and
-    meaning signals.
-    """
-    parts = []
-    for i, chunk in enumerate(chunks, 1):
-        header = f"[Passage {i}"
-        if chunk.section_title:
-            header += f" — {chunk.section_title}"
-        if chunk.page_number:
-            header += f", p.{chunk.page_number}"
-        header += "]"
-        body = f"{header}\n"
-        if chunk.context:
-            body += f"Context: {chunk.context}\n"
-        body += chunk.text
-        parts.append(body)
-    return "\n\n".join(parts)
 
 
 @observe(name="rubric_rag", as_type="generation", capture_input=False, capture_output=False)
@@ -47,7 +25,7 @@ def generate_rubric_rag(
     """
     user_content = RAG_USER_TEMPLATE.format(
         question_text=question.text,
-        retrieved_chunks=_format_chunks(chunks),
+        retrieved_chunks=format_chunks_for_rubric(chunks),
     )
 
     response = client.chat.completions.create(
@@ -66,13 +44,11 @@ def generate_rubric_rag(
 
     get_client().update_current_generation(
         model=MODEL,
-        input={
-            "question_text": question.text,
-            "question_index": question.index,
-            "condition": "rag",
-            "chunks_used": len(chunks),
-        },
-        output={"criteria_count": len(criteria), "total_points": raw["total_points"]},
+        input=[
+            {"role": "system", "content": RUBRIC_SYSTEM_PROMPT},
+            {"role": "user", "content": user_content},
+        ],
+        output={"criteria": [c.model_dump() for c in criteria], "total_points": raw["total_points"]},
         usage_details={
             "input_tokens": usage.prompt_tokens if usage else 0,
             "output_tokens": usage.completion_tokens if usage else 0,

@@ -37,8 +37,11 @@ def generate_rubric_no_rag(
 
     get_client().update_current_generation(
         model=MODEL,
-        input={"question_text": question.text, "question_index": question.index, "condition": "no_rag"},
-        output={"criteria_count": len(criteria), "total_points": raw["total_points"]},
+        input=[
+            {"role": "system", "content": RUBRIC_SYSTEM_PROMPT},
+            {"role": "user", "content": user_content},
+        ],
+        output={"criteria": [c.model_dump() for c in criteria], "total_points": raw["total_points"]},
         usage_details={
             "input_tokens": usage.prompt_tokens if usage else 0,
             "output_tokens": usage.completion_tokens if usage else 0,

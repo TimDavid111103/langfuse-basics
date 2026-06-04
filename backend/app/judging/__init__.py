@@ -1,4 +1,4 @@
-"""Evaluation package: judge, aggregation, schemas, and pipeline events."""
+"""Evaluation package: judge, aggregation, and schemas."""
 
 from app.judging.aggregation import aggregate_results, run_winner
 from app.judging.judge import evaluate_rubrics

@@ -35,7 +35,6 @@ from app.models.experiment import Experiment, ExperimentResult, ExperimentStatus
 from app.models.questionnaire import Questionnaire
 from app.models.source_material import IngestionStatus, SourceMaterial
 from app.judging import QuestionEvaluationResult, aggregate_results
-from app.judging.events import register_default_handlers, reset_event_bus, get_event_bus
 from app.services.pipeline import run_experiment_pipeline
 
 
@@ -84,9 +83,6 @@ async def main(
     print(f"material       '{material_name}'  ({material.chunk_count} chunks)")
     print(f"runs           {num_runs}")
     print()
-
-    reset_event_bus()
-    register_default_handlers(get_event_bus())
 
     started = datetime.utcnow()
     await run_experiment_pipeline(experiment.id, num_runs)

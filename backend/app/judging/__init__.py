@@ -1,8 +1,8 @@
 """Evaluation package: judge, aggregation, schemas, and pipeline events."""
 
-from app.eval.aggregation import aggregate_results, run_winner
-from app.eval.judge import evaluate_rubrics
-from app.eval.schemas import (
+from app.judging.aggregation import aggregate_results, run_winner
+from app.judging.judge import evaluate_rubrics
+from app.judging.schemas import (
     DimensionScore,
     ExperimentEvaluationSummary,
     QuestionEvaluationResult,

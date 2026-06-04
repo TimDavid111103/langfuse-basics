@@ -1,4 +1,4 @@
-from app.eval.formatting import format_chunks_for_rubric, format_passages_for_judge, format_rubric
+from app.judging.formatting import format_chunks_for_rubric, format_passages_for_judge, format_rubric
 from app.schemas.retrieval import RetrievedChunk
 from app.schemas.rubric import GeneratedRubric, RubricCriterion
 

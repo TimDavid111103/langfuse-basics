@@ -2,8 +2,8 @@
 
 import pytest
 
-from app.eval.aggregation import EVAL_DIMENSIONS
-from app.eval.schemas import DimensionScore, QuestionEvaluationResult
+from app.judging.aggregation import EVAL_DIMENSIONS
+from app.judging.schemas import DimensionScore, QuestionEvaluationResult
 
 
 def make_dimension_scores(

@@ -4,9 +4,9 @@ from typing import Literal
 from langfuse import get_client, observe
 from openai import OpenAI
 
-from app.eval.formatting import format_passages_for_judge, format_rubric
-from app.eval.prompts import JUDGE_SYSTEM_PROMPT, JUDGE_USER_TEMPLATE
-from app.eval.schemas import DimensionScore, QuestionEvaluationResult
+from app.judging.formatting import format_passages_for_judge, format_rubric
+from app.judging.prompts import JUDGE_SYSTEM_PROMPT, JUDGE_USER_TEMPLATE
+from app.judging.schemas import DimensionScore, QuestionEvaluationResult
 from app.schemas.retrieval import RetrievedChunk
 from app.schemas.rubric import GeneratedRubric, QuestionItem
 

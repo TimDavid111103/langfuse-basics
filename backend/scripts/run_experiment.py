@@ -34,8 +34,8 @@ from app.database import AsyncSessionLocal, create_db_and_tables
 from app.models.experiment import Experiment, ExperimentResult, ExperimentStatus
 from app.models.questionnaire import Questionnaire
 from app.models.source_material import IngestionStatus, SourceMaterial
-from app.eval import QuestionEvaluationResult, aggregate_results
-from app.eval.events import register_default_handlers, reset_event_bus, get_event_bus
+from app.judging import QuestionEvaluationResult, aggregate_results
+from app.judging.events import register_default_handlers, reset_event_bus, get_event_bus
 from app.services.pipeline import run_experiment_pipeline
 
 

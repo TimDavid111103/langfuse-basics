@@ -1,6 +1,6 @@
 from typing import Literal
 
-from app.eval.schemas import ExperimentEvaluationSummary, QuestionEvaluationResult, RunSummary
+from app.judging.schemas import ExperimentEvaluationSummary, QuestionEvaluationResult, RunSummary
 
 EVAL_DIMENSIONS = (
     "concept_coverage",

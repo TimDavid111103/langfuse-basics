@@ -1,4 +1,4 @@
-from app.eval.events import (
+from app.judging.events import (
     EventBus,
     ExperimentCompleted,
     ExperimentStarted,

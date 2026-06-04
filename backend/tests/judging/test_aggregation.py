@@ -1,6 +1,6 @@
 import pytest
 
-from app.eval.aggregation import aggregate_results, run_winner
+from app.judging.aggregation import aggregate_results, run_winner
 
 
 class TestRunWinner:

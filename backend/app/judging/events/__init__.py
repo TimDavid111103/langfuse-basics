@@ -1,6 +1,6 @@
-from app.eval.events.bus import EventBus, get_event_bus, reset_event_bus
-from app.eval.events.handlers import register_default_handlers
-from app.eval.events.types import (
+from app.judging.events.bus import EventBus, get_event_bus, reset_event_bus
+from app.judging.events.handlers import register_default_handlers
+from app.judging.events.types import (
     ExperimentCompleted,
     ExperimentFailed,
     ExperimentStarted,

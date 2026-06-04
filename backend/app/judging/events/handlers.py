@@ -2,8 +2,8 @@
 
 import logging
 
-from app.eval.events.bus import EventBus
-from app.eval.events.types import (
+from app.judging.events.bus import EventBus
+from app.judging.events.types import (
     ExperimentCompleted,
     ExperimentFailed,
     ExperimentStarted,

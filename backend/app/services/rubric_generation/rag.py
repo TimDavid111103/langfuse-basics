@@ -3,7 +3,7 @@ import json
 from langfuse import get_client, observe
 from openai import OpenAI
 
-from app.eval.formatting import format_chunks_for_rubric
+from app.judging.formatting import format_chunks_for_rubric
 from app.schemas.retrieval import RetrievedChunk
 from app.schemas.rubric import GeneratedRubric, QuestionItem, RubricCriterion
 from app.services.rubric_generation.prompts import RAG_USER_TEMPLATE, RUBRIC_SYSTEM_PROMPT

@@ -1,6 +1,6 @@
 import json
 
-from app.eval.schemas import DimensionScore, QuestionEvaluationResult  # noqa: F401
+from app.judging.schemas import DimensionScore, QuestionEvaluationResult  # noqa: F401
 
 JUDGE_SYSTEM_PROMPT_TEMPLATE = """\
 You are an expert physics educator and assessment specialist with deep knowledge of \

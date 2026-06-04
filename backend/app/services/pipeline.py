@@ -12,8 +12,8 @@ Langfuse(
     secret_key=settings.langfuse_secret_key,
     host=settings.langfuse_base_url,
 )
-from app.eval.aggregation import aggregate_results, run_winner
-from app.eval.events import (
+from app.judging.aggregation import aggregate_results, run_winner
+from app.judging.events import (
     EventBus,
     ExperimentCompleted,
     ExperimentFailed,
@@ -23,7 +23,7 @@ from app.eval.events import (
     RunStarted,
     get_event_bus,
 )
-from app.eval.judge import evaluate_rubrics
+from app.judging.judge import evaluate_rubrics
 from app.models.experiment import Experiment, ExperimentResult, ExperimentStatus
 from app.services.dataset.versioning import get_version_questions
 from app.services.retrieval.retriever import retrieve_chunks

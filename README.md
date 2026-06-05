@@ -1,1 +1,1 @@
-# pensive-project-application
+# Langfuse basics
